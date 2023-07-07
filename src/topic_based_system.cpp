@@ -263,18 +263,26 @@ hardware_interface::return_type TopicBasedSystem::write(const rclcpp::Time& /*ti
 {
   // To avoid spamming TopicBased's joint command topic we check the difference between the joint states and
   // the current joint commands, if it's smaller than a threshold we don't publish it.
+  /*
   const auto diff = std::transform_reduce(
       joint_states_[POSITION_INTERFACE_INDEX].cbegin(), joint_states_[POSITION_INTERFACE_INDEX].cend(),
       joint_commands_[POSITION_INTERFACE_INDEX].cbegin(), 0.0,
-      [](const auto d1, const auto d2) { return std::abs(d1) + std::abs(d2); }, std::minus<double>{});
+      [](const auto d1, const auto d2) { return std::abs(d1 - d2); }, std::minus<double>{});
   if (diff <= trigger_joint_command_threshold_)
   {
     return hardware_interface::return_type::OK;
   }
+  */
 
   sensor_msgs::msg::JointState joint_state;
+  bool empty = true;
   for (std::size_t i = 0; i < info_.joints.size(); ++i)
   {
+    if (std::abs(joint_states_[POSITION_INTERFACE_INDEX][i] - joint_commands_[POSITION_INTERFACE_INDEX][i]) <= trigger_joint_command_threshold_)
+    {
+      continue;
+    }
+    empty = false;
     joint_state.name.push_back(info_.joints[i].name);
     joint_state.header.stamp = node_->now();
     // only send commands to the interfaces that are defined for this joint
@@ -300,6 +308,10 @@ hardware_interface::return_type TopicBasedSystem::write(const rclcpp::Time& /*ti
     }
   }
 
+  if(empty)
+  {
+    return hardware_interface::return_type::OK;
+  }
   for (const auto& mimic_joint : mimic_joints_)
   {
     joint_state.position[mimic_joint.joint_index] =
