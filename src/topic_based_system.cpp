@@ -93,6 +93,9 @@ CallbackReturn TopicBasedSystem::on_init(const hardware_interface::HardwareInfo&
         {
           joint_commands_[index][i] = std::stod(interface.initial_value);
         }
+        else {
+          joint_commands_[index][i] = std::numeric_limits<double>::quiet_NaN();
+        }
       }
     }
   }
@@ -278,7 +281,8 @@ hardware_interface::return_type TopicBasedSystem::write(const rclcpp::Time& /*ti
   bool empty = true;
   for (std::size_t i = 0; i < info_.joints.size(); ++i)
   {
-    if (std::abs(joint_states_[POSITION_INTERFACE_INDEX][i] - joint_commands_[POSITION_INTERFACE_INDEX][i]) <= trigger_joint_command_threshold_)
+    if ( isnanl(joint_commands_[POSITION_INTERFACE_INDEX][i]) ||
+         (std::abs(joint_states_[POSITION_INTERFACE_INDEX][i] - joint_commands_[POSITION_INTERFACE_INDEX][i]) <= trigger_joint_command_threshold_))
     {
       continue;
     }
